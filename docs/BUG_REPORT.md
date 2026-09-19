@@ -111,11 +111,17 @@ This document details the intentional security flaws, authorization holes, busin
 
 ---
 
-### Bug 10: Array Index Used as React Key in TodoList
-- **Location**: `frontend/src/features/todos/components/TodoList.tsx`, line 42
-- **Severity**: Medium
-- **Reason**: Rendering items with `key={index}` instead of `key={todo.id}` causes React's reconciliation algorithm to mishandle internal state when items are deleted, reordered, or toggled.
-- **Fix Proposal**: Replace `key={index}` with `key={todo.id}`.
+### Bug 10: Non-Deterministic Todo Ordering & Array Index Used as React Key (Items Shifting Positions)
+- **Location**:
+  1. `backend/app/services/todo_service.py`, function `get_todos()`, line 31
+  2. `frontend/src/features/todos/components/TodoList.tsx`, line 42
+- **Severity**: High
+- **Reason**:
+  1. The database query in `get_todos()` lacked an `ORDER BY` clause. Due to PostgreSQL's MVCC mechanism, updating a todo (e.g. toggling `completed`) writes a new row version to a different disk page, causing subsequent `SELECT` queries to return items in an unpredictable, shifting order.
+  2. Rendering items with `key={index}` instead of `key={todo.id}` causes React's reconciliation algorithm to mishandle internal DOM state when items are updated, reordered, or deleted.
+- **Fix Proposal**:
+  1. Enforce deterministic sorting in `get_todos()`: `.order_by(Todo.created_at.desc(), Todo.id.desc())`.
+  2. Replace `key={index}` with `key={todo.id}` in `TodoList.tsx`.
 
 ---
 
