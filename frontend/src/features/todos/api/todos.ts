@@ -62,7 +62,12 @@ export function useCreateTodo() {
 
 
 export function useUpdateTodo() {
-  return useMutation({
+  return useMutation<
+    Todo,
+    Error,
+    { id: string; data: UpdateTodoRequest },
+    { previousTodos?: TodoListResponse }
+  >({
     mutationFn: async ({
       id,
       data,
@@ -92,7 +97,10 @@ export function useUpdateTodo() {
 
       return { previousTodos };
     },
-    onError: () => {
+    onError: (_err, _variables, context) => {
+      if (context?.previousTodos) {
+        queryClient.setQueryData(["todos"], context.previousTodos);
+      }
       toast.error("Failed to update todo");
     },
     onSettled: () => {
