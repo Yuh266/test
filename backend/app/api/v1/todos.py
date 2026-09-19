@@ -14,6 +14,7 @@ from app.services.todo_service import (
     create_todo,
     delete_todo,
     get_todo_by_id,
+    get_todo_by_id_and_user,
     get_todos,
     update_todo,
 )
@@ -92,7 +93,7 @@ async def get_todo(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a specific todo by ID."""
-    todo = await get_todo_by_id(db, todo_id)
+    todo = await get_todo_by_id_and_user(db, todo_id, current_user.id)
     if not todo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -111,7 +112,7 @@ async def update_existing_todo(
     redis: RedisClient = Depends(get_redis),
 ):
     """Update a todo item."""
-    todo = await get_todo_by_id(db, todo_id)
+    todo = await get_todo_by_id_and_user(db, todo_id, current_user.id)
     if not todo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -142,7 +143,7 @@ async def delete_existing_todo(
     redis: RedisClient = Depends(get_redis),
 ):
     """Delete a todo item."""
-    todo = await get_todo_by_id(db, todo_id)
+    todo = await get_todo_by_id_and_user(db, todo_id, current_user.id)
     if not todo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
