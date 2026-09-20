@@ -261,3 +261,87 @@ async def test_deterministic_ordering_todos(client: AsyncClient):
 
     # Most recent should be first
     assert returned_ids[:3] == list(reversed(created_ids))
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_todos_success(client: AsyncClient):
+    """Test bulk deleting multiple todos."""
+    token = await get_auth_token(client, "bulk_del@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create 3 todos
+    t1 = (await client.post("/api/v1/todos", json={"title": "Item 1"}, headers=headers)).json()
+    t2 = (await client.post("/api/v1/todos", json={"title": "Item 2"}, headers=headers)).json()
+    t3 = (await client.post("/api/v1/todos", json={"title": "Item 3"}, headers=headers)).json()
+
+    # Bulk delete t1 and t2
+    del_resp = await client.post(
+        "/api/v1/todos/bulk-delete",
+        json={"todo_ids": [t1["id"], t2["id"]]},
+        headers=headers,
+    )
+    assert del_resp.status_code == 200
+    assert del_resp.json()["deleted_count"] == 2
+
+    # Verify t1 and t2 are gone, t3 remains
+    assert (await client.get(f"/api/v1/todos/{t1['id']}", headers=headers)).status_code == 404
+    assert (await client.get(f"/api/v1/todos/{t2['id']}", headers=headers)).status_code == 404
+    assert (await client.get(f"/api/v1/todos/{t3['id']}", headers=headers)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_todos_cross_user_isolation(client: AsyncClient):
+    """Test User B cannot bulk delete User A's todos."""
+    token_a = await get_auth_token(client, "del_a@example.com")
+    token_b = await get_auth_token(client, "del_b@example.com")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # User A creates 2 todos
+    t1 = (await client.post("/api/v1/todos", json={"title": "A1"}, headers=headers_a)).json()
+    t2 = (await client.post("/api/v1/todos", json={"title": "A2"}, headers=headers_a)).json()
+
+    # User B attempts to bulk delete User A's todos
+    del_resp = await client.post(
+        "/api/v1/todos/bulk-delete",
+        json={"todo_ids": [t1["id"], t2["id"]]},
+        headers=headers_b,
+    )
+    assert del_resp.status_code == 200
+    assert del_resp.json()["deleted_count"] == 0
+
+    # User A's todos still exist
+    assert (await client.get(f"/api/v1/todos/{t1['id']}", headers=headers_a)).status_code == 200
+    assert (await client.get(f"/api/v1/todos/{t2['id']}", headers=headers_a)).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_bulk_delete_todos_with_tags(client: AsyncClient):
+    """Test bulk deleting todos with tags attached cleans up gracefully."""
+    token = await get_auth_token(client, "bulk_tag_del@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Create tag
+    tag = (await client.post("/api/v1/tags", json={"name": "Work"}, headers=headers)).json()
+
+    # Create todo and attach tag
+    todo = (await client.post("/api/v1/todos", json={"title": "Tagged Todo"}, headers=headers)).json()
+    await client.post(f"/api/v1/todos/{todo['id']}/tags", json={"tag_id": tag["id"]}, headers=headers)
+
+    # Bulk delete todo
+    del_resp = await client.post(
+        "/api/v1/todos/bulk-delete",
+        json={"todo_ids": [todo["id"]]},
+        headers=headers,
+    )
+    assert del_resp.status_code == 200
+    assert del_resp.json()["deleted_count"] == 1
+
+    # Verify todo is deleted
+    assert (await client.get(f"/api/v1/todos/{todo['id']}", headers=headers)).status_code == 404
+
+    # Verify tag itself still exists
+    tags_resp = await client.get("/api/v1/tags", headers=headers)
+    assert tags_resp.status_code == 200
+    assert any(t["id"] == tag["id"] for t in tags_resp.json()["items"])
+
