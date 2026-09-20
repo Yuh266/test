@@ -111,8 +111,11 @@ Benchmarked on a dataset of **1,000,000 todos** across **10,000 users**:
 ---
 
 ## 🤖 AI Assistance Disclosure
-- **Tools Used**: Google Antigravity IDE (Gemini 3.8 Flash model).
+- **Tools Used**: Google Antigravity IDE (Gemini Model / Claude Sonnet).
+- **Configuration & Context**: Project architecture guidelines, Conventional Commits (`.commitlintrc.json`), Pydantic/OpenAPI schema contracts.
 - **Assisted Areas**:
-  - Drafting comprehensive markdown documentation and benchmark schemas.
-  - Designing UI components with Tailwind CSS / Radix UI.
-  - Writing automated Playwright E2E scenarios and verifying Docker test environments.
+  - Drafting comprehensive technical specifications (`docs/TODO_SHARING_SPEC.md`).
+  - Formulating PostgreSQL GIN trigram indexing and `EXPLAIN ANALYZE` benchmarks.
+  - Generating boilerplates for Playwright E2E tests and UI component styling.
+  - Reviewing code against OWASP practices (IDOR, SQL injection, cache poisoning).
+- **Human Verification**: All code logic, database migrations, unit tests (29 passing tests), and Playwright runs were validated locally and manually reviewed.
